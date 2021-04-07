@@ -71,7 +71,7 @@ const Footer = (props: any) => {
         >
           <Grid item>
             <BccTypography type="p2" block color="#FAFAFA">
-              © 2000 - 2020 {t("footer.bcc")}
+              © 2000 - {new Date().getFullYear()} {t("footer.bcc")}
             </BccTypography>
             <BccTypography type="p2" block color="#FAFAFA">
               {t("footer.rights")}

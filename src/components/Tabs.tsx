@@ -1,6 +1,6 @@
 import React from "react";
 import { Grid, InputAdornment } from "@material-ui/core";
-import { BccTypography, BccTooltip, BccTabs, BccTab } from "./BccComponents";
+import { BccTypography, BccTooltip, BccTabs, BccTab, BccLink } from "./BccComponents";
 import InfoOutlinedIcon from "@material-ui/icons/InfoOutlined";
 import { makeStyles, createStyles, Theme } from "@material-ui/core/styles";
 import { useTranslation } from "react-i18next";
@@ -303,21 +303,6 @@ const Tabs = (props: any) => {
                 <BccTypography type="p2" block mb="8px">
                   {t("tab.text22")}
                 </BccTypography>
-                <BccTypography type="p2" block className={classes.textHint}>
-                  {t("tab.text222")}
-                  <BccTooltip
-                    title={t("tab.text2222")}
-                    placement="right"
-                    enterTouchDelay={0}
-                    leaveTouchDelay={3500}
-                    arrow
-                    interactive
-                  >
-                    <InputAdornment position="end">
-                      <InfoOutlinedIcon style={{ color: "#80868C" }} />
-                    </InputAdornment>
-                  </BccTooltip>
-                </BccTypography>
               </Grid>
             </Grid>
             <Grid item container direction="row" wrap="nowrap">
@@ -342,9 +327,6 @@ const Tabs = (props: any) => {
                 <BccTypography type="p2" block mb="8px">
                   {t("tab.text44")}
                 </BccTypography>
-                <BccTypography type="p3" block color="#4D565F">
-                  {t("tab.text444")}
-                </BccTypography>
               </Grid>
             </Grid>
             <Grid item container direction="row" wrap="nowrap">
@@ -355,7 +337,7 @@ const Tabs = (props: any) => {
               </Grid>
               <Grid item>
                 <BccTypography type="p2" block mb="8px">
-                  {t("tab.text5")}
+                  {t("tab.text55")} <BccLink href="https://www.bcc.kz/loan-debt/filial.pdf" target="_blank">{t("tab.text555")}</BccLink>
                 </BccTypography>
               </Grid>
             </Grid>

@@ -301,11 +301,11 @@ const Slider = (props: SliderProps) => {
               className={classes.header}
             >
               <Grid item>
-                <a href="https://www.bcc.kz/deferral">
+                <a href="https://www.bcc.kz">
                   <img src={process.env.PUBLIC_URL + "/img/logo.svg"} />
                 </a>
               </Grid>
-              <Grid item>
+              {/* <Grid item>
                 <Select
                   className={classes.select}
                   value={props.lang}
@@ -314,7 +314,7 @@ const Slider = (props: SliderProps) => {
                   <MenuItem value="ru">РУС</MenuItem>
                   <MenuItem value="kz">КАЗ</MenuItem>
                 </Select>
-              </Grid>
+              </Grid> */}
             </Grid>
             <Grid
               container

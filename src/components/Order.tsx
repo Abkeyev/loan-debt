@@ -7,7 +7,8 @@ import {
   BccLink,
   BccSlider,
   BccButton,
-  BccAlert,
+  BccDateTimeProvider,
+  BccDatePicker
 } from "./BccComponents";
 import { makeStyles, createStyles, Theme } from "@material-ui/core/styles";
 import InputMask from "react-input-mask";
@@ -16,48 +17,28 @@ import "react-block-ui/style.css";
 import api from "../api/Api";
 import FileReaderInput from "react-file-reader-input";
 import { useTranslation } from "react-i18next";
+import DateFnsUtils from '@date-io/date-fns';
+import ruLocale from 'date-fns/locale/ru';
 
-const webConfigEnv = (window as any).env;
-const cityList = [
-  "Нур-Султан",
-  "Алматы",
-  "Шымкент",
-  "Актау",
-  "Актобе",
-  "Атырау",
-  "Жезказган",
-  "Караганда",
-  "Кокшетау",
-  "Костанай",
-  "Кызылорда",
-  "Павлодар",
-  "Петропавловск",
-  "Семей",
-  "Талдыкорган",
-  "Тараз",
-  "Уральск",
-  "Усть-Каменогорск",
-];
-const cityListKz = [
-  "Нұр-Сұлтан",
-  "Алматы",
-  "Шымкент",
-  "Ақтау",
-  "Ақтөбе",
-  "Атырау",
-  "Жезқазған",
-  "Қарағанды",
-  "Көкшетау",
-  "Қостанай",
-  "Қызылорда",
-  "Павлодар",
-  "Петропавл",
-  "Семей",
-  "Талдықорған",
-  "Тараз",
-  "Орал",
-  "Өскемен",
-];
+const cities = [{ name: "Алматы", code: "ALM"},
+{ name: "Актау", code: "AKT"},
+{ name: "Актобе", code: "ATB"},
+{ name: "Атырау", code: "ATR"},
+{ name: "Нур-Султан", code: "AST"},
+{ name: "Жезказган", code: "GZK"},
+{ name: "Караганда", code: "KAR"},
+{ name: "Кокшетау", code: "KOK"},
+{ name: "Костанай", code: "KOS"},
+{ name: "Кызылорда", code: "KZO"},
+{ name: "Павлодар", code: "PVL"},
+{ name: "Петропавловск", code: "PTR"},
+{ name: "Семей", code: "SMP"},
+{ name: "Талдыкорган", code: "TLD"},
+{ name: "Тараз", code: "TRZ"},
+{ name: "Уральск", code: "URL"},
+{ name: "Усть-Каменогорск", code: "UST"},
+{ name: "Шымкент", code: "SMK"},
+{ name: "Туркестан.обл", code: "FTO"}]
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -195,6 +176,7 @@ const useStyles = makeStyles((theme: Theme) =>
       docForm: {
         border: "1px solid #F3F3F3",
         borderRadius: 4,
+        marginTop: 24,
         marginBottom: 24,
         padding: "12px",
         lineHeight: "48px",
@@ -595,8 +577,9 @@ const BccMaskedIinInput = (props: TextMaskCustomProps) => {
 const Order = (props: any) => {
   const classes = useStyles({});
   const [type, setType] = React.useState("1");
-  const [step, setStep] = React.useState(0);
+  const [step, setStep] = React.useState(2);
   const [filial, setFilial] = React.useState("");
+  const [date, setDate] = React.useState<Date | null>(null);
   const [iin, setIin] = React.useState("");
   const [fio, setFio] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -607,7 +590,7 @@ const Order = (props: any) => {
   const [isLoading, setLoading] = React.useState(false);
   const [openError, setOpenError] = React.useState(false);
   const [code, setCode] = React.useState("");
-  const [other, setOther] = React.useState("");
+  const [other] = React.useState("Прошу предоставить справку о ссудной задолженности на дату:");
   const [period, setPeriod] = React.useState(1);
   const [reason, setReason] = React.useState("");
   const [creditNumber, setCreditNumber] = React.useState("");
@@ -656,13 +639,13 @@ const Order = (props: any) => {
       );
     else if (step === 1) return code.length === 6;
     else if (step === 2) {
-      return type === "1"
+      return type === "2"
         ? creditNumber.length > 0 &&
             +period > 0 &&
             reason.length > 0 &&
             (file1.length > 0 || file2.length > 0 || file3.length > 0)
         : creditNumber.length > 0 &&
-            other.length > 0 &&
+            date !== null && !isDisableDay(date) &&
             (file1.length > 0 || file2.length > 0 || file3.length > 0);
     } else return true;
   };
@@ -680,6 +663,10 @@ const Order = (props: any) => {
           token: "4e44afcd-a5e9-4710-bf8f-835792d24827",
           data: {
             Items: [
+              {
+                Name: "ImportFl",
+                Value: "EPV"
+              },
               {
                 Name: "IINS",
                 Value: iin,
@@ -706,11 +693,11 @@ const Order = (props: any) => {
               },
               {
                 Name: "DelayPeriod",
-                Value: period.toString(),
+                Value: "",
               },
               {
                 Name: "DelayReason",
-                Value: type === "1" ? reason : other,
+                Value: type === "2" ? reason : `${date && date.toLocaleDateString()}`,
               },
               {
                 Name: "PhoneNumber",
@@ -855,8 +842,6 @@ const Order = (props: any) => {
     results.forEach((result: any) => {
       const [e, file] = result;
       const res = e.target.result.split(",");
-      console.log(res[1]);
-      console.log(file.size);
       if (file.size > 5000000) {
         setFile1Error(true);
       } else {
@@ -891,6 +876,53 @@ const Order = (props: any) => {
       }
     });
   };
+
+  const isDisableDay = (day: Date) => {
+    const today = new Date()
+    const tomorow = new Date(today.setDate(today.getDate() + 1))
+    let day1 = new Date(), day2 = new Date(), day3 = new Date()
+    console.log(today.getDay())
+    console.log(tomorow.getDay())
+    if(tomorow.getDay() === 3) {
+      day1 = tomorow
+      day2 = new Date(day2.setDate(tomorow.getDate() + 1)) 
+      day3 = new Date(day3.setDate(tomorow.getDate() + 2))
+    } else if(tomorow.getDay() === 4) {
+      day1 = tomorow
+      day2 = new Date(day2.setDate(tomorow.getDate() + 1)) 
+      day3 = new Date(day3.setDate(tomorow.getDate() + 4))
+    } else if(tomorow.getDay() === 5) {
+      day1 = tomorow
+      day2 = new Date(day2.setDate(tomorow.getDate() + 3)) 
+      day3 = new Date(day3.setDate(tomorow.getDate() + 4))
+    } else if(tomorow.getDay() === 6) {
+      day1 = new Date(day1.setDate(tomorow.getDate() + 2)) 
+      day2 = new Date(day2.setDate(tomorow.getDate() + 3)) 
+      day3 = new Date(day3.setDate(tomorow.getDate() + 4))
+    } else if(tomorow.getDay() === 0) {
+      day1 = new Date(day1.setDate(tomorow.getDate() + 1)) 
+      day2 = new Date(day2.setDate(tomorow.getDate() + 2)) 
+      day3 = new Date(day3.setDate(tomorow.getDate() + 3))
+    } else {
+      day1 = tomorow
+      day2 = new Date(day2.setDate(tomorow.getDate() + 1)) 
+      day3 = new Date(day3.setDate(tomorow.getDate() + 2))
+    }
+    
+    if(day.toLocaleDateString() === day1.toLocaleDateString()
+      || day.toLocaleDateString() === day2.toLocaleDateString()
+      || day.toLocaleDateString() === day3.toLocaleDateString())
+      return false
+    return true
+  }
+
+  const getErrorMessage = () => {
+    if(date) {
+      if(isDisableDay(new Date(date)))
+        return "Пожалуйста, введите корректную дату"
+    }
+    return ""
+  }
 
   return (
     <div className={classes.outerContainer} ref={props.refProp}>
@@ -984,13 +1016,6 @@ const Order = (props: any) => {
             <BlockUi tag="div" blocking={isLoading}>
               {step === 0 ? (
                 <>
-                  <Grid item className={classes.alert}>
-                    <BccAlert severity="error">
-                      <BccTypography type="p3">
-                        {t("order.notice")}
-                      </BccTypography>
-                    </BccAlert>
-                  </Grid>
                   <Grid item>
                     <BccInput
                       fullWidth={true}
@@ -1006,16 +1031,13 @@ const Order = (props: any) => {
                       <MenuItem key="1" value="1">
                         {t("order.type1")}
                       </MenuItem>
-                      <MenuItem key="2" value="2">
-                        {t("order.type2")}
-                      </MenuItem>
                     </BccInput>
                   </Grid>
                   <Grid item>
                     <BccInput
                       fullWidth={true}
                       className={classes.inputStyle}
-                      label={t("order.branch")}
+                      label={t("order.branch")+"*"}
                       id="filial"
                       name="filial"
                       value={filial}
@@ -1023,18 +1045,10 @@ const Order = (props: any) => {
                       variant="outlined"
                       select
                     >
-                      {props.lang === "ru"
-                        ? cityList.map((b: any, index: number) => {
+                      {cities.map((b: any, index: number) => {
                             return (
-                              <MenuItem key={index} value={b}>
-                                {b}
-                              </MenuItem>
-                            );
-                          })
-                        : cityListKz.map((b: any, index: number) => {
-                            return (
-                              <MenuItem key={index} value={b}>
-                                {b}
+                              <MenuItem key={index} value={b.code}>
+                                {b.name}
                               </MenuItem>
                             );
                           })}
@@ -1044,7 +1058,7 @@ const Order = (props: any) => {
                     <BccInput
                       className={classes.inputStyle}
                       fullWidth
-                      label={t("order.iin")}
+                      label={t("order.iin")+"*"}
                       variant="filled"
                       id="iin"
                       name="iin"
@@ -1064,7 +1078,7 @@ const Order = (props: any) => {
                     <BccInput
                       className={classes.inputStyle}
                       fullWidth
-                      label={t("order.fio")}
+                      label={t("order.fio")+"*"}
                       variant="filled"
                       id="fio"
                       name="fio"
@@ -1076,7 +1090,7 @@ const Order = (props: any) => {
                     <BccInput
                       variant="filled"
                       fullWidth
-                      label={t("order.phone")}
+                      label={t("order.phone")+"*"}
                       onChange={(e: any) => setPhone(e.target.value)}
                       className={classes.inputStyle}
                       helperText={phoneError ? t("order.phoneError") : ""}
@@ -1111,11 +1125,7 @@ const Order = (props: any) => {
                         <BccTypography type="p3" ml="10px">
                           {t("order.agree")}{" "}
                           <BccLink
-                            href={
-                              process.env.PUBLIC_URL + props.lang === "ru"
-                                ? "/agreement.pdf"
-                                : "/agreementKz.pdf"
-                            }
+                            href={`https://www.bcc.kz/loan-debt/agreement${props.lang === "kz" ? "Kz" : ""}.pdf`}
                             target="_blank"
                           >
                             {t("order.agree2")}
@@ -1224,6 +1234,211 @@ const Order = (props: any) => {
                   <>
                     <Grid item>
                       <BccInput
+                        fullWidth
+                        label={t("order.number")+"*"}
+                        variant="filled"
+                        id="creditNumber"
+                        name="creditNumber"
+                        value={creditNumber}
+                        onChange={(e: any) => setCreditNumber(e.target.value)}
+                      />
+                      <BccTypography
+                        type="p3"
+                        color="rgb(77, 86, 95)"
+                        align="left"
+                        mt="12px"
+                        mb="24px"
+                        block
+                      >
+                        {t("order.numberHint")}
+                      </BccTypography>
+                    </Grid>
+                    <Grid item>
+                      <BccTypography
+                        type="p2"
+                        color="#000D1A"
+                        align="left"
+                        mb="12px"
+                        block
+                      >
+                        {other}
+                      </BccTypography>
+                      <BccDateTimeProvider utils={DateFnsUtils} locale={ruLocale}>
+                        <BccDatePicker
+                          placeholder="Выберите дату*"
+                          value={date}
+                          format="dd.MM.yyyy"
+                          onChange={(date: Date) => date && setDate(date)}
+                          onAccept={(date: Date) => date && setDate(date)}
+                          disablePast
+                          error={date ? isDisableDay(date) : false}
+                          helperText={getErrorMessage()}
+                          shouldDisableDate={(day: Date) => isDisableDay(day)}
+                          fullWidth
+                        />
+                      </BccDateTimeProvider>
+                    </Grid>
+                    <BccTypography
+                      type="p2"
+                      color="#000D1A"
+                      align="left"
+                      mt="24px"
+                      block
+                    >
+                      Выберите как минимум один документ:
+                    </BccTypography>
+                    <Grid
+                      item
+                      container
+                      justify="space-between"
+                      wrap="nowrap"
+                      className={classes.docForm}
+                      style={{ marginTop: 12 }}
+                    >
+                      <Grid item>
+                        <BccTypography type="p3" color="#4D565F" mb="4px" block>
+                          {t("order.doc")}
+                        </BccTypography>
+                        <BccTypography type="p4" color="#80868C" block>
+                          {t("order.docDesc")}
+                        </BccTypography>
+                        {file1Error && (
+                          <BccTypography
+                            type="p4"
+                            mt="4px"
+                            color="#C84F4F"
+                            block
+                          >
+                            {t("order.docError")}
+                          </BccTypography>
+                        )}
+                      </Grid>
+                      <Grid item>
+                        <FileReaderInput
+                          as="url"
+                          accept="image/jpeg,image/png,image/gif,application/pdf"
+                          onChange={handleChange1}
+                        >
+                          <BccButton
+                            variant="outlined"
+                            color="secondary"
+                            component="span"
+                            size="small"
+                            className={classes.btnStyle}
+                          >
+                            {file1
+                              ? t("order.fileChoosed")
+                              : t("order.fileNotChoosed")}
+                          </BccButton>
+                        </FileReaderInput>
+                      </Grid>
+                    </Grid>
+                    <Grid
+                      item
+                      container
+                      justify="space-between"
+                      wrap="nowrap"
+                      className={classes.docForm}
+                    >
+                      <Grid item>
+                        <BccTypography type="p3" color="#4D565F" mb="4px" block>
+                          {t("order.doc")}
+                        </BccTypography>
+                        <BccTypography type="p4" color="#80868C" block>
+                          {t("order.docDesc")}
+                        </BccTypography>
+                        {file2Error && (
+                          <BccTypography
+                            type="p4"
+                            mt="4px"
+                            color="#C84F4F"
+                            block
+                          >
+                            {t("order.docError")}
+                          </BccTypography>
+                        )}
+                      </Grid>
+                      <Grid item>
+                        <FileReaderInput
+                          as="url"
+                          accept="image/jpeg,image/png,image/gif,application/pdf"
+                          onChange={handleChange2}
+                        >
+                          <BccButton
+                            variant="outlined"
+                            color="secondary"
+                            component="span"
+                            size="small"
+                            className={classes.btnStyle}
+                          >
+                            {file2
+                              ? t("order.fileChoosed")
+                              : t("order.fileNotChoosed")}
+                          </BccButton>
+                        </FileReaderInput>
+                      </Grid>
+                    </Grid>
+                    <Grid
+                      item
+                      container
+                      justify="space-between"
+                      wrap="nowrap"
+                      className={classes.docForm}
+                    >
+                      <Grid item>
+                        <BccTypography type="p3" color="#4D565F" mb="4px" block>
+                          {t("order.doc")}
+                        </BccTypography>
+                        <BccTypography type="p4" color="#80868C" block>
+                          {t("order.docDesc")}
+                        </BccTypography>
+                        {file3Error && (
+                          <BccTypography
+                            type="p4"
+                            mt="4px"
+                            color="#C84F4F"
+                            block
+                          >
+                            {t("order.docError")}
+                          </BccTypography>
+                        )}
+                      </Grid>
+                      <Grid item>
+                        <FileReaderInput
+                          as="url"
+                          accept="image/jpeg,image/png,image/gif,application/pdf"
+                          onChange={handleChange3}
+                        >
+                          <BccButton
+                            variant="outlined"
+                            color="secondary"
+                            component="span"
+                            size="small"
+                            className={classes.btnStyle}
+                          >
+                            {file3
+                              ? t("order.fileChoosed")
+                              : t("order.fileNotChoosed")}
+                          </BccButton>
+                        </FileReaderInput>
+                      </Grid>
+                    </Grid>
+                    <Grid item>
+                      <BccButton
+                        variant="contained"
+                        disabled={!isValid()}
+                        onClick={() => startProcess()}
+                        color="primary"
+                        fullWidth
+                      >
+                        {t("order.sendOrder")}
+                      </BccButton>
+                    </Grid>
+                  </>
+                ) : (
+                  <>
+                    <Grid item>
+                      <BccInput
                         className={classes.inputStyle}
                         fullWidth
                         label={t("order.number")}
@@ -1251,7 +1466,6 @@ const Order = (props: any) => {
                             }}
                             onFocus={() => setPeriod(1)}
                             onChange={(e: any) => {
-                              console.log(e.target.value.slice(-1));
                               const s = +e.target.value
                                 .slice(-1)
                                 .replace(/[^0-9]/g, "");
@@ -1390,7 +1604,7 @@ const Order = (props: any) => {
                             size="small"
                             className={classes.btnStyle}
                           >
-                            {file1
+                            {file2
                               ? t("order.fileChoosed")
                               : t("order.fileNotChoosed")}
                           </BccButton>
@@ -1435,181 +1649,7 @@ const Order = (props: any) => {
                             size="small"
                             className={classes.btnStyle}
                           >
-                            {file1
-                              ? t("order.fileChoosed")
-                              : t("order.fileNotChoosed")}
-                          </BccButton>
-                        </FileReaderInput>
-                      </Grid>
-                    </Grid>
-                    <Grid item>
-                      <BccButton
-                        variant="contained"
-                        disabled={!isValid()}
-                        onClick={() => startProcess()}
-                        color="primary"
-                        fullWidth
-                      >
-                        {t("order.sendOrder")}
-                      </BccButton>
-                    </Grid>
-                  </>
-                ) : (
-                  <>
-                    <Grid item>
-                      <BccInput
-                        className={classes.inputStyle}
-                        fullWidth
-                        label={t("order.number")}
-                        variant="filled"
-                        id="creditNumber"
-                        name="creditNumber"
-                        value={creditNumber}
-                        onChange={(e: any) => setCreditNumber(e.target.value)}
-                      />
-                    </Grid>
-                    <Grid item>
-                      <BccInput
-                        className={classes.inputStyleText}
-                        fullWidth
-                        label={t("order.text")}
-                        variant="filled"
-                        id="other"
-                        name="other"
-                        multiline
-                        value={other}
-                        onChange={(e: any) => setOther(e.target.value)}
-                      />
-                    </Grid>
-                    <Grid
-                      item
-                      container
-                      justify="space-between"
-                      wrap="nowrap"
-                      className={classes.docForm}
-                    >
-                      <Grid item>
-                        <BccTypography type="p3" color="#4D565F" mb="4px" block>
-                          {t("order.doc")}
-                        </BccTypography>
-                        <BccTypography type="p4" color="#80868C" block>
-                          {t("order.docDesc")}
-                        </BccTypography>
-                        {file1Error && (
-                          <BccTypography
-                            type="p4"
-                            mt="4px"
-                            color="#C84F4F"
-                            block
-                          >
-                            {t("order.docError")}
-                          </BccTypography>
-                        )}
-                      </Grid>
-                      <Grid item>
-                        <FileReaderInput
-                          as="url"
-                          accept="image/jpeg,image/png,image/gif,application/pdf"
-                          onChange={handleChange1}
-                        >
-                          <BccButton
-                            variant="outlined"
-                            color="secondary"
-                            component="span"
-                            size="small"
-                            className={classes.btnStyle}
-                          >
-                            {file1
-                              ? t("order.fileChoosed")
-                              : t("order.fileNotChoosed")}
-                          </BccButton>
-                        </FileReaderInput>
-                      </Grid>
-                    </Grid>
-                    <Grid
-                      item
-                      container
-                      justify="space-between"
-                      wrap="nowrap"
-                      className={classes.docForm}
-                    >
-                      <Grid item>
-                        <BccTypography type="p3" color="#4D565F" mb="4px" block>
-                          {t("order.doc")}
-                        </BccTypography>
-                        <BccTypography type="p4" color="#80868C" block>
-                          {t("order.docDesc")}
-                        </BccTypography>
-                        {file2Error && (
-                          <BccTypography
-                            type="p4"
-                            mt="4px"
-                            color="#C84F4F"
-                            block
-                          >
-                            {t("order.docError")}
-                          </BccTypography>
-                        )}
-                      </Grid>
-                      <Grid item>
-                        <FileReaderInput
-                          as="url"
-                          accept="image/jpeg,image/png,image/gif,application/pdf"
-                          onChange={handleChange2}
-                        >
-                          <BccButton
-                            variant="outlined"
-                            color="secondary"
-                            component="span"
-                            size="small"
-                            className={classes.btnStyle}
-                          >
-                            {file1
-                              ? t("order.fileChoosed")
-                              : t("order.fileNotChoosed")}
-                          </BccButton>
-                        </FileReaderInput>
-                      </Grid>
-                    </Grid>
-                    <Grid
-                      item
-                      container
-                      justify="space-between"
-                      wrap="nowrap"
-                      className={classes.docForm}
-                    >
-                      <Grid item>
-                        <BccTypography type="p3" color="#4D565F" mb="4px" block>
-                          {t("order.doc")}
-                        </BccTypography>
-                        <BccTypography type="p4" color="#80868C" block>
-                          {t("order.docDesc")}
-                        </BccTypography>
-                        {file3Error && (
-                          <BccTypography
-                            type="p4"
-                            mt="4px"
-                            color="#C84F4F"
-                            block
-                          >
-                            {t("order.docError")}
-                          </BccTypography>
-                        )}
-                      </Grid>
-                      <Grid item>
-                        <FileReaderInput
-                          as="url"
-                          accept="image/jpeg,image/png,image/gif,application/pdf"
-                          onChange={handleChange3}
-                        >
-                          <BccButton
-                            variant="outlined"
-                            color="secondary"
-                            component="span"
-                            size="small"
-                            className={classes.btnStyle}
-                          >
-                            {file1
+                            {file3
                               ? t("order.fileChoosed")
                               : t("order.fileNotChoosed")}
                           </BccButton>

@@ -86,7 +86,7 @@ const BccInput = withStyles({
       background: "none",
       border: "1px solid",
       borderRadius: 4,
-      borderColor: "#f3f3f3",
+      borderColor: "#CCCFD1",
       "&:before": {
         border: "none",
       },
